@@ -1,17 +1,17 @@
 #!/bin/sh
-set -e
-
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 if [ "$USER" == 'root' ]; then
-  echo 'error: cannot run `doasedit` as root' >&2
+  echo -e "${RED}error:${NC} cannot run \`doasedit\` as root" >&2
   exit
-elif ! [ -x "$(command -v doas)" ]; then           # Check if doas is installed. If it isn't installed, warn the user.
-  echo 'error: could not find command `doas`' >&2
+elif ! [ -x "$(command -v doas)" ]; then           # Check if doas is installed. If it isn't installed.
+  echo -e "${RED}error:${NC} could not find command \`doas\`" >&2
   exit
 elif [ -z "$1" ]; then                             # Check if there was any input. If there was no input, abort.
-  echo "error: no input given" >&2
+  echo -e "${RED}error:${NC} no input given" >&2
   exit
 elif [ -d "$1" ]; then                             # Check if the inputted file is a directory. If it is a directory, abort.
-  echo "error: $1: is a directory" >&2
+  echo -e "${RED}error:${NC} $1: is a directory" >&2
   exit
 fi
 
@@ -24,7 +24,7 @@ fi
 
 eval "$EDITOR $tempFile"             # Start writing to the file. Use $EDITOR as the editor.
 
-if (cmp -s $1 $tempFile) || [ -f $tempFile ]; then
+if (cmp -s $1 $tempFile) || ! [ -f $tempFile ]; then
   echo "no changes written to $1"
 else
   doas cp $tempFile $1
