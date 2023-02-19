@@ -1,0 +1,31 @@
+#!/bin/sh
+set -e
+if [ "$USER" == 'root' ]; then
+  echo 'error: cannot run `doasedit` as root' >&2
+  exit
+elif ! [ -x "$(command -v doas)" ]; then           # Check if doas is installed. If it isn't installed, warn the user.
+  echo 'error: could not find command `doas`' >&2
+  exit
+elif [ -z "$0" ]; then                             # Check if there was any input. If there was no input, abort.
+  echo "error: no input given" >&2
+  exit
+elif [ -d "$0" ]; then                             # Check if the inputted file is a directory. If it is a directory, abort.
+  echo "error: $0: is a directory" >&2
+  exit
+fi
+
+tempDir="$(mktemp -d)"               # Create the directory for the temporary file. Example: /tmp/tmp.rYT4bE3AiS/
+tempFile="$tempDir/$(basename $0)" # Create the temporary file. Example: /usr/bin/bash -> /tmp/tmp.rYT4bE3AiS/bash
+
+cp "$0" "$tempFile"
+
+eval "$EDITOR $tempFile"             # Start writing to the file. Use $EDITOR as the editor.
+
+if (cmp -s $0 $tempFile); then
+  echo "no changes written to $0"
+else
+  doas cp $tempFile $0
+  rm $tempDir -rf
+
+  echo "wrote changes to file $1"
+fi
