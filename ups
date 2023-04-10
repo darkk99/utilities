@@ -1,0 +1,63 @@
+#!/usr/bin/ruby
+require 'colorize'
+
+operation = ARGV[0].to_s[0, 1] # get first letter of operation, i.e. if command is `ups upgrade`, then `command` is 'u'
+
+def runCommand(tcmd)
+  args = ARGV.drop(1).join(" ")
+  cmd = tcmd.to_s
+  cmd = cmd + ' ' + args unless args.is_empty?
+  puts 'Running '.bold + "\`apt #{cmd}\`".red
+
+  if !system("apt #{cmd}")
+    abort "Error occurred while running \`apt #{cmd}\`".red.bold
+  end
+end
+
+def runRootCommand(tcmd)
+  args = ARGV.drop(1).join(" ")
+  cmd = tcmd.to_s
+  cmd = cmd + ' ' + args unless args.empty?
+  puts 'Running '.bold + "\`sudo apt #{cmd}\`".red
+
+  if !system("sudo apt #{cmd}")
+    abort "Error occurred while running \`apt #{cmd}\`".red.bold
+  end
+end
+
+if operation == 'q' || operation == 'l' # query || list
+  runCommand('list --installed')
+elsif operation == 's' # search
+  runCommand('search')
+elsif operation == 'i' # info
+  runCommand('info')
+elsif operation == 'a' # add
+  runRootCommand('install --reinstall')
+elsif operation == 'r' # remove
+  runRootCommand('remove')
+elsif operation == 'u' # update/upgrade
+  runRootCommand('update')
+  runRootCommand('upgrade')
+  runRootCommand('dist-upgrade')
+  runRootCommand('autoremove')
+elsif operation == 'e' # edit
+  runRootCommand('edit-sources')
+elsif operation == 'd' # dep
+  runRootCommand('satisfy')
+else # help
+  puts <<~HEREDOC
+  ups is a CLI wrapper for apt that allows you to shorten down your commands
+  for all commands listed, you can add additional character after the subcommand. for example, both \`ups u\` and \`ups ujahsd\` will work
+
+  commands:
+    l OR q   - list/query packages based on package names
+    s        - search in package descriptions
+    i        - show package info
+    a        - add/install packages
+    r        - remove packages
+    u        - update, upgrade, dist-upgrade, and autoremove
+    e        - edit the source information file
+    d        - satisfy dependency strings
+
+  HEREDOC
+end
