@@ -3,11 +3,10 @@ require 'colorize'
 
 operation = ARGV[0].to_s[0, 1] # get first letter of operation, i.e. if command is `ups upgrade`, then `command` is 'u'
 
-
 def runCommand(tcmd)
   args = ARGV.drop(1).join(" ")
   cmd = tcmd.to_s
-  cmd = cmd + ' ' + args unless args.is_empty?
+  cmd = cmd + ' ' + args unless args.empty?
   puts 'Running '.bold + "\`#{cmd}\`".red
 
   if !system("#{cmd}")
