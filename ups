@@ -16,7 +16,7 @@ def runCommand(tcmd)
 end
 
 if operation == 'q' || operation == 'l' # query || list
-  runCommand('list --installed')
+  runCommand('apt list --installed')
 elsif operation == 's' # search
   runCommand('apt search')
 elsif operation == 'i' # info
@@ -33,7 +33,7 @@ elsif operation == 'e' # edit
   runCommand('sudo apt edit-sources')
 elsif operation == 'd' # dep
   runCommand('sudo apt satisfy')
-elsif operation == 'n' # autoremove
+elsif operation == 'n' # needless
   runCommand('sudo apt autoremove')
 else # help
   puts <<~HEREDOC
