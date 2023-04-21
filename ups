@@ -10,12 +10,19 @@ end
 
 $operation = ARGV[0].to_s[0, 1] # get first letter of operation, i.e. if command is `ups upgrade`, then `operation` is 'u'
 
-def apt_or_flatpak
-  # print "A #{'root command'.red} is about to be ran. Proceed? #{'['.blue}#{'Y'.green}#{'/'.blue}#{'n'.red}#{']'.blue} "
-  print "The command you provided, \`#{ARGV[0]}\`, does #{'not'.red} support \`ups\`. Would you like to use flatpak, apt, or do you not want to run it? #{'['.blue}#{'N'.green}#{'/'.blue}#{'apt'.green}#{'/'.blue}#{'flatpak'.green}#{']'.blue} "
-  input = STDIN.gets
-  if input == 'apt' || input == 'a' || input == 'flatpak' || input == 'f'
-    input
+def apt_or_flatpak(uflag = false)
+  if !uflag
+    print "The command you provided, \`#{ARGV[0]}\`, does #{'not'.red} support \`ups\`. Would you like to use flatpak, apt, or do you not want to run it? #{'['.blue}#{'N'.green}#{'/'.blue}#{'apt'.green}#{'/'.blue}#{'flatpak'.green}#{']'.blue} "
+  else
+    print "Looks like you specified the \`-u\` or \`--unsupported\` flag. Would you like to run the command using flatpak, apt, or do you not want to run it? #{'['.blue}#{'N'.green}#{'/'.blue}#{'apt'.green}#{'/'.blue}#{'flatpak'.green}#{']'.blue} "
+  end
+
+  input = STDIN.gets.chop
+
+  if input == 'apt' || input == 'a'
+    return 'apt'
+  elsif input == 'flatpak' || input == 'f'
+    return 'flatpak'
   else
     abort "#{'error:'.red} User does #{'not'.red} want to run a command."
   end
@@ -27,10 +34,10 @@ def apt_used?
   if input.casecmp? 'y' then false else true end
 end
 
-def run_command(temporary_command)
+def run_command(temporary_command, concat_argv = true)
   args = ARGV.drop(1).join(" ")
   command = temporary_command.to_s
-  command = command + ' ' + args unless args.empty?
+  command = command + ' ' + args unless args.empty? || !concat_argv
   puts "#{'Running'.bold.green} \`#{command}\`"
 
   if !system("#{command}")
@@ -39,7 +46,13 @@ def run_command(temporary_command)
 end
 
 
-if $operation == 'q' || $operation == 'l' # query || list
+if ARGV.include? '-u'
+  run_command(apt_or_flatpak(true) + ' ' + ARGV.join(' ').sub("-u", ""), false)
+
+elsif ARGV.include? '--unsupported'
+  run_command(apt_or_flatpak + ' ' + ARGV.join(' ').sub("--unsupported", ""), false)
+
+elsif $operation == 'q' || $operation == 'l' # query || list
   if apt_used?
     run_command('apt-fast list --installed')
   else
@@ -118,11 +131,6 @@ elsif $operation == 'h' # help
     -n OR --noconfirm - removes the [Y/n] prompt on root commands
   HEREDOC
 
-elsif ARGV.include? '-u'
-  run_command(apt_or_flatpak + ' ' + ARGV.join(' ').sub("-u", ""))
-
-elsif ARGV.include? '--unsupported'
-  run_command(apt_or_flatpak + ' ' + ARGV.join(' ').sub("--unsupported", ""))
 else
-  run_command(apt_or_flatpak + ' ' + ARGV.join(' '))
+  run_command(apt_or_flatpak + ' ' + ARGV.join(' '), false)
 end
