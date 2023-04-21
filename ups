@@ -1,54 +1,128 @@
-#!/usr/bin/ruby
-require 'colorize'
+#!/usr/bin/ruby --jit
 
-operation = ARGV[0].to_s[0, 1] # get first letter of operation, i.e. if command is `ups upgrade`, then `command` is 'u'
+# Instead of requiring the `colorize` gem, I do this:
+class String
+  def red;            "\e[31m#{self}\e[0m" end
+  def green;          "\e[32m#{self}\e[0m" end
+  def blue;           "\e[34m#{self}\e[0m" end
+  def bold;           "\e[1m#{self}\e[22m" end
+end
 
-def runCommand(tcmd)
-  args = ARGV.drop(1).join(" ")
-  cmd = tcmd.to_s
-  cmd = cmd + ' ' + args unless args.empty?
-  puts 'Running '.bold + "\`#{cmd}\`".red
+$operation = ARGV[0].to_s[0, 1] # get first letter of operation, i.e. if command is `ups upgrade`, then `operation` is 'u'
 
-  if !system("#{cmd}")
-    abort "Error occurred while running \`#{cmd}\`".red.bold
+def apt_or_flatpak
+  # print "A #{'root command'.red} is about to be ran. Proceed? #{'['.blue}#{'Y'.green}#{'/'.blue}#{'n'.red}#{']'.blue} "
+  print "The command you provided, \`#{ARGV[0]}\`, does #{'not'.red} support \`ups\`. Would you like to use flatpak, apt, or do you not want to run it? #{'['.blue}#{'N'.green}#{'/'.blue}#{'apt'.green}#{'/'.blue}#{'flatpak'.green}#{']'.blue} "
+  input = STDIN.gets
+  if input == 'apt' || input == 'a' || input == 'flatpak' || input == 'f'
+    input
+  else
+    abort "#{'error:'.red} User does #{'not'.red} want to run a command."
   end
 end
 
-if operation == 'q' || operation == 'l' # query || list
-  runCommand('apt list --installed')
-elsif operation == 's' # search
-  runCommand('apt search')
-elsif operation == 'i' # info
-  runCommand('apt info')
-elsif operation == 'a' # add
-  runCommand('install --reinstall')
-elsif operation == 'r' # remove
-  runCommand('sudo apt remove')
-elsif operation == 'u' # update/upgrade
-  runCommand('sudo apt update')
-  runCommand('sudo apt upgrade')
-  runCommand('sudo apt dist-upgrade')
-elsif operation == 'e' # edit
-  runCommand('sudo apt edit-sources')
-elsif operation == 'd' # dep
-  runCommand('sudo apt satisfy')
-elsif operation == 'n' # needless
-  runCommand('sudo apt autoremove')
-else # help
+def apt_used?
+  print "Do you want to run your command through flatpak? #{'['.blue}#{'N'.green}#{'/'.blue}#{'y'.red}#{']'.blue} "
+  input = STDIN.gets
+  if input.casecmp? 'y' then false else true end
+end
+
+def run_command(temporary_command)
+  args = ARGV.drop(1).join(" ")
+  command = temporary_command.to_s
+  command = command + ' ' + args unless args.empty?
+  puts "#{'Running'.bold.green} \`#{command}\`"
+
+  if !system("#{command}")
+    abort "#{'error:'.red} Error occurred while running \`#{command}\`".red.bold
+  end
+end
+
+
+if $operation == 'q' || $operation == 'l' # query || list
+  if apt_used?
+    run_command('apt-fast list --installed')
+  else
+    run_command('flatpak list')
+  end
+
+elsif $operation == 's' # search
+  if apt_used?
+    run_command('apt-fast search')
+  else
+    run_command('flatpak search')
+  end
+
+elsif $operation == 'd' # data
+  if apt_used?
+    run_command('apt-fast info')
+  else
+    run_command('flatpak info')
+  end
+
+elsif $operation == 'i' # install
+  if apt_used?
+    run_command('sudo apt-fast install')
+  else
+    run_command('flatpak install')
+  end
+
+elsif $operation == 'r' # remove
+  if apt_used?
+    run_command('sudo apt-fast remove')
+  else
+    run_command('flatpak remove')
+  end
+
+elsif $operation == 'u' # update/upgrade
+  if apt_used?
+    run_command('sudo apt-fast update')
+    run_command('sudo apt-fast upgrade')
+    run_command('sudo apt-fast dist-upgrade')
+  else
+    run_command('flatpak update')
+  end
+
+elsif $operation == 'e' # edit
+  run_command('sudo apt-fast edit-sources')
+
+elsif $operation == 'b' # dep
+  run_command('sudo apt-fast satisfy')
+
+elsif $operation == 'n' # needless
+  if apt_used?
+    run_command('sudo apt-fast autoremove')
+  else
+    run_command('flatpak autoremove')
+  end
+
+
+elsif $operation == 'h' # help
   puts <<~HEREDOC
-  ups is a CLI wrapper for apt that allows you to shorten down your commands
+  ups is a CLI wrapper for apt-fast that allows you to shorten down your commands
   for all commands listed, you can add additional character after the subcommand. for example, both \`ups u\` and \`ups ujahsd\` will work
   use `ups` in in the format:
   ups [command] packages
   commands:
-    l OR q   - list/query packages based on package names
-    s        - search in package descriptions
-    i        - show package info
-    a        - add/install packages
-    r        - remove packages
-    u        - update, upgrade, dist-upgrade, and autoremove
-    e        - edit the source information file
-    d        - satisfy dependency strings
-    n        - remove needless dependencies
+    h                 - show this help menu
+    l OR q            - list/query packages based on package names
+    s                 - search in package descriptions
+    d                 - show package data
+    i                 - add/install packages
+    r                 - remove packages
+    u                 - update, upgrade, dist-upgrade, and autoremove
+    e                 - edit the source information file
+    b                 - satisfy builddeps
+    n                 - remove needless dependencies
+  flags:
+    -n OR --noconfirm - removes the [Y/n] prompt on root commands
   HEREDOC
+
+elsif ARGV.include? '-u'
+  run_command(apt_or_flatpak + ' ' + ARGV.join(' ').sub("-u", ""))
+
+elsif ARGV.include? '--unsupported'
+  run_command(apt_or_flatpak + ' ' + ARGV.join(' ').sub("--unsupported", ""))
+else
+  run_command(apt_or_flatpak + ' ' + ARGV.join(' '))
 end
