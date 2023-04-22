@@ -5,6 +5,7 @@ class String
   def red;            "\e[31m#{self}\e[0m" end
   def green;          "\e[32m#{self}\e[0m" end
   def blue;           "\e[34m#{self}\e[0m" end
+  def yellow;          "\e[33m#{self}\e[0m" end
   def bold;           "\e[1m#{self}\e[22m" end
 end
 
@@ -24,13 +25,13 @@ def apt_or_flatpak(uflag = false)
   elsif input == 'flatpak' || input == 'f'
     return 'flatpak'
   else
-    abort "#{'error:'.red} User does #{'not'.red} want to run a command."
+    abort "#{'ERROR:'.red} User does #{'not'.red} want to run a command."
   end
 end
 
 def apt_used?
   print "Do you want to run your command through flatpak? #{'['.blue}#{'N'.green}#{'/'.blue}#{'y'.red}#{']'.blue} "
-  input = STDIN.gets
+  input = STDIN.gets.chop
   if input.casecmp? 'y' then false else true end
 end
 
@@ -38,13 +39,15 @@ def run_command(temporary_command, concat_argv = true)
   args = ARGV.drop(1).join(" ")
   command = temporary_command.to_s
   command = command + ' ' + args unless args.empty? || !concat_argv
+  command.squeeze!(" ")
   puts "#{'Running'.bold.green} \`#{command}\`"
 
-  if !system("#{command}")
-    abort "#{'error:'.red} Error occurred while running \`#{command}\`".red.bold
+  if !system(command)
+    abort "#{'ERROR:'.red} Error occurred while running \`#{command}\`".red.bold
   end
 end
 
+if Process.uid == 0 then puts "#{'WARNING:'.yellow} \`ups\` was ran as root. This could cause issues." end
 
 if ARGV.include? '-u'
   run_command(apt_or_flatpak(true) + ' ' + ARGV.join(' ').sub("-u", ""), false)
@@ -103,11 +106,7 @@ elsif $operation == 'b' # dep
   run_command('sudo apt-fast satisfy')
 
 elsif $operation == 'n' # needless
-  if apt_used?
     run_command('sudo apt-fast autoremove')
-  else
-    run_command('flatpak autoremove')
-  end
 
 
 elsif $operation == 'h' # help
